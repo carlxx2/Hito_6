@@ -238,12 +238,29 @@ void init_sensors(void) {
 }
 
 // =============================================================================
-// OTA (Temporalmente deshabilitado hasta que WiFi funcione)
+// OTA - ¡ACTIVADO!
 // =============================================================================
 void check_ota_updates(void) {
-    ESP_LOGI(TAG, "🔍 Verificación OTA deshabilitada temporalmente");
-    // Comentado hasta que WiFi funcione
-}
+    ESP_LOGI(TAG, "🔍 Iniciando verificación OTA...");
+    
+    esp_http_client_config_t config = {
+        .url = GITHUB_FIRMWARE_URL,
+        .timeout_ms = 10000,
+    };
+    
+    esp_https_ota_config_t ota_config = {
+        .http_config = &config,
+    };
+    
+    ESP_LOGI(TAG, "📥 Intentando descargar firmware desde: %s", GITHUB_FIRMWARE_URL);
+    
+    esp_err_t ret = esp_https_ota(&ota_config);
+    if (ret == ESP_OK) {
+        ESP_LOGI(TAG, "✅ OTA exitoso! Reiniciando...");
+        esp_restart();
+    } else {
+        ESP_LOGE(TAG, "❌ OTA falló: %s", esp_err_to_name(ret));
+    }
 
 // =============================================================================
 // FUNCIÓN PRINCIPAL
