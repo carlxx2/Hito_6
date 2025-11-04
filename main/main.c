@@ -35,7 +35,7 @@ void check_ota_updates(void);
 #define MAX_INTENTOS   10
 #define THINGSBOARD_MQTT_URI "mqtt://demo.thingsboard.io"
 #define THINGSBOARD_ACCESS_TOKEN "CC34vYEp44Z00eoPKLfV"
-#define GITHUB_FIRMWARE_URL "https://github.com/carlxx2/Hito_6/tree/main/firmware/hito6.bin"
+#define GITHUB_FIRMWARE_URL "https://raw.githubusercontent.com/carlxx2/Hito_6/main/firmware/hito6.bin"
 #define LDR_ADC_CHANNEL    ADC1_CHANNEL_4
 
 
