@@ -1,3 +1,4 @@
+
 /* 
  * Sistema completo ESP32: OTA GitHub + WiFi + MQTT ThingsBoard
  * Código independiente sin protocol_examples_common
@@ -19,6 +20,12 @@
 #include "nvs_flash.h"
 #include "mqtt_client.h"
 #include "driver/adc.h"
+#include "esp_crt_bundle.h"
+
+// Declarar las funciones antes de usarlas
+bool verify_url_no_ssl(void);
+void check_ota_updates(void);
+
 
 // =============================================================================
 // CONFIGURACIÓN - ¡ACTUALIZA CON TUS DATOS REALES!
@@ -28,8 +35,9 @@
 #define MAX_INTENTOS   10
 #define THINGSBOARD_MQTT_URI "mqtt://demo.thingsboard.io"
 #define THINGSBOARD_ACCESS_TOKEN "CC34vYEp44Z00eoPKLfV"
-#define GITHUB_FIRMWARE_URL "https://raw.githubusercontent.com/carlxx2/Hito_6/main/firmware/firmware.bin"
+#define GITHUB_FIRMWARE_URL "https://github.com/carlxx2/Hito_6/tree/main/firmware/hito6.bin"
 #define LDR_ADC_CHANNEL    ADC1_CHANNEL_4
+
 
 static const char *TAG = "SENSOR_OTA_SYSTEM";
 
@@ -238,18 +246,88 @@ void init_sensors(void) {
 }
 
 // =============================================================================
-// OTA (Temporalmente deshabilitado hasta que WiFi funcione)
+// VERIFICACIÓN DE URL SIN SSL
+// =============================================================================
+// Agrega esta función para diagnosticar la URL
+/*void verify_github_url(void) {
+    ESP_LOGI(TAG, "🔍 Verificando URL de GitHub...");
+    ESP_LOGI(TAG, "📋 URL actual: %s", GITHUB_FIRMWARE_URL);
+    
+    // Prueba estas URLs alternativas:
+    const char* test_urls[] = {
+        "https://raw.githubusercontent.com/carlxx2/Hito_6/main/firmware/hito6.bin",
+        "https://raw.githubusercontent.com/carlxx2/Hito_6/main/build/hito6.bin",
+        "https://github.com/carlxx2/Hito_6/raw/main/firmware/hito6.bin",  // Formato alternativo
+    };
+    
+    for (int i = 0; i < sizeof(test_urls)/sizeof(test_urls[0]); i++) {
+        ESP_LOGI(TAG, "🔗 Probando: %s", test_urls[i]);
+        
+        esp_http_client_config_t config = {
+            .url = test_urls[i],
+            .method = HTTP_METHOD_HEAD,
+            .timeout_ms = 10000,
+            .crt_bundle_attach = esp_crt_bundle_attach,
+        };
+        
+        esp_http_client_handle_t client = esp_http_client_init(&config);
+        esp_err_t err = esp_http_client_perform(client);
+        
+        if (err == ESP_OK) {
+            int status = esp_http_client_get_status_code(client);
+            ESP_LOGI(TAG, "📡 Status: %d - %s", status, 
+                    status == 200 ? "✅ ARCHIVO ENCONTRADO" : "❌ NO ENCONTRADO");
+        } else {
+            ESP_LOGE(TAG, "❌ Error: %s", esp_err_to_name(err));
+        }
+        
+        esp_http_client_cleanup(client);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+}*/
+
+// =============================================================================
+// OTA COMPLETO SIN SSL
 // =============================================================================
 void check_ota_updates(void) {
-    ESP_LOGI(TAG, "🔍 Verificación OTA deshabilitada temporalmente");
-    // Comentado hasta que WiFi funcione
+    ESP_LOGI(TAG, "🔍 OTA con diagnóstico completo...");
+    
+    // 1. Primero verificar la URL
+    //verify_github_url();
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+    
+    // 2. Intentar OTA
+    ESP_LOGI(TAG, "📥 Iniciando descarga OTA...");
+    
+    esp_http_client_config_t config = {
+        .url = GITHUB_FIRMWARE_URL,
+        .timeout_ms = 60000,
+        .crt_bundle_attach = esp_crt_bundle_attach,
+        .buffer_size = 4096,
+    };
+    
+    esp_https_ota_config_t ota_config = {
+        .http_config = &config,
+        .partial_http_download = true,
+    };
+    
+    esp_err_t ret = esp_https_ota(&ota_config);
+    
+    if (ret == ESP_OK) {
+        ESP_LOGI(TAG, "🎉 OTA EXITOSO! Reiniciando...");
+        vTaskDelay(3000 / portTICK_PERIOD_MS);
+        esp_restart();
+    } else {
+        ESP_LOGE(TAG, "❌ OTA falló: %s", esp_err_to_name(ret));
+        
+    }
 }
 
 // =============================================================================
 // FUNCIÓN PRINCIPAL
 // =============================================================================
 void app_main(void) {
-    ESP_LOGI(TAG, "🚀 Iniciando Sistema Completo");
+    ESP_LOGI(TAG, "🚀 Iniciando Sistema...");
     
     // 1. INICIALIZAR NVS
     ESP_LOGI(TAG, "📁 Inicializando NVS...");
@@ -270,10 +348,16 @@ void app_main(void) {
         // 4. INICIALIZAR SENSORES
         init_sensors();
         
-        // 5. VERIFICACIÓN OTA (temporalmente deshabilitada)
+        // 5. OTA SIN CERTIFICADOS - ELIGE UNA OPCIÓN:
+        
+        // Opción A: Simple (recomendada)
+        ESP_LOGI(TAG, "🔍 Verificando OTA...");
         check_ota_updates();
         
-        ESP_LOGI(TAG, "✅ Sistema completamente inicializado");
+        // Opción B: Con verificación previa
+        // check_ota_updates_simple();
+        
+        ESP_LOGI(TAG, "✅ Sistema operativo");
         
         // 6. LOOP PRINCIPAL
         int cycle_count = 0;
@@ -287,7 +371,7 @@ void app_main(void) {
             vTaskDelay(6000 / portTICK_PERIOD_MS);
         }
     } else {
-        ESP_LOGE(TAG, "❌ No se pudo conectar a WiFi. Reiniciando...");
+        ESP_LOGE(TAG, "❌ Fallo WiFi - Reiniciando...");
         vTaskDelay(5000 / portTICK_PERIOD_MS);
         esp_restart();
     }
