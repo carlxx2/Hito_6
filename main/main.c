@@ -359,6 +359,8 @@ void app_main(void) {
         
         ESP_LOGI(TAG, "✅ Sistema operativo");
         
+        ESP_LOGI(TAG, "ESTA ES LA VERSION 2 DEL FIRMWARE");
+        
         // 6. LOOP PRINCIPAL
         int cycle_count = 0;
         while (1) {
